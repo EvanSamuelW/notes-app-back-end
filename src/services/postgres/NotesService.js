@@ -3,6 +3,7 @@ const { nanoid } = require('nanoid');
 const InvariantError = require('../../exceptions/InvariantError');
 const NotFoundError = require('../../exceptions/NotFoundError');
 const { mapDBToModel } = require('../../utils');
+const AuthorizationError = require('../../exceptions/AuthorizationError');
 
 
 class NotesService {
@@ -10,14 +11,14 @@ class NotesService {
         this._pool = new Pool();
     }
 
-    async addNote({ title, body, tags }) {
+    async addNote({ title, body, tags, owner }) {
         const id = nanoid(16);
         const createdAt = new Date().toISOString();
         const updatedAt = createdAt;
 
         const query = {
-            text: 'INSERT INTO notes VALUES($1, $2, $3, $4, $5, $6) RETURNING id',
-            values: [id, title, body, tags, createdAt, updatedAt],
+            text: 'INSERT INTO notes VALUES($1, $2, $3, $4, $5, $6,$7) RETURNING id',
+            values: [id, title, body, tags, createdAt, updatedAt, owner],
         };
 
         const result = await this._pool.query(query);
@@ -30,7 +31,11 @@ class NotesService {
     }
 
     async getNotes() {
-        const result = await this._pool.query('SELECT * FROM notes');
+        const query = {
+            text: 'SELECT * FROM notes WHERE owner = $1',
+            values: [owner],
+        };
+        const result = await this._pool.query(query);
         return result.rows.map(mapDBToModel);
 
     }
